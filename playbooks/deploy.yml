@@ -1,0 +1,15 @@
+---
+- name: Deploy Compiled SKU_RM0004 to Raspberry Pis
+  hosts: all
+  become: yes
+  tasks:
+    - name: Copy compiled executable to the Pis
+      copy:
+        src: /tmp/SKU_RM0004/display
+        dest: /usr/local/bin/display
+        mode: '0755'
+
+    - name: Restart the Uctronics display service
+      service:
+        name: uctronics-display
+        state: restarted
