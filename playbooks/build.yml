@@ -1,13 +1,15 @@
 ---
 - name: Compile SKU_RM0004
   hosts: localhost
+  become: yes
   tasks:
-    - name: Install build tools
-      become: yes
+    - name: Install build tools and development libraries
       apt:
         name:
           - make
           - gcc
+          - build-essential
+          - libc6-dev
         state: present
         update_cache: yes
 
