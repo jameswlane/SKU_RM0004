@@ -9,7 +9,60 @@
         dest: /usr/local/bin/display
         mode: '0755'
 
-    - name: Restart the Uctronics display service
-      service:
+    - name: Check if uctronics-display service exists
+      stat:
+        path: /etc/systemd/system/uctronics-display.service
+      register: service_file
+
+    - name: Set up the uctronics-display service
+      copy:
+        dest: /etc/systemd/system/uctronics-display.service
+        content: |
+          [Unit]
+          Description=Uctronics Display Service
+          After=network.target
+
+          [Service]
+          ExecStart=/usr/local/bin/display
+          Restart=always
+
+          [Install]
+          WantedBy=multi-user.target
+      when: not service_file.stat.exists
+      notify: Reload and Restart uctronics-display service
+
+    - name: Check I2C configuration in /boot/config.txt
+      ansible.builtin.lineinfile:
+        path: /boot/config.txt
+        regexp: '^#?dtparam=i2c_arm='
+        line: 'dtparam=i2c_arm=on'
+        state: present
+      register: i2c_config
+
+    - name: Add I2C dev to modules
+      ansible.builtin.lineinfile:
+        path: /etc/modules
+        line: 'i2c-dev'
+        state: present
+      register: i2c_modules
+
+    - name: Enable I2C via raspi-config
+      command: raspi-config nonint do_i2c 0
+      when: i2c_config.changed or i2c_modules.changed
+
+    - name: Enable uctronics-display service
+      systemd:
+        name: uctronics-display
+        enabled: yes
+        state: started
+
+  handlers:
+    - name: Reload and Restart uctronics-display service
+      command: systemctl daemon-reload
+      notify:
+        - Restart uctronics-display service
+
+    - name: Restart uctronics-display service
+      systemd:
         name: uctronics-display
         state: restarted
